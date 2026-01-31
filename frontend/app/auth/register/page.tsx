@@ -67,7 +67,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md relative z-10">
         <Link href="/" className="flex items-center gap-2 mb-8">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Brain className="w-5 h-5 text-primary-foreground" />
+            <Brain className="w-5 h-5 text-black" />
           </div>
           <span className="text-lg font-bold text-foreground">ParkinsonHub</span>
         </Link>
