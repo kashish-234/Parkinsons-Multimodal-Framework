@@ -12,7 +12,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-black">
-              <Brain className="w-5 h-5 text-black text-primary-foreground" />
+              <Brain className="w-5 h-5 text-black" />
             </div>
             <span className="text-xl font-bold text-foreground">ParkinsonHub</span>
           </div>
