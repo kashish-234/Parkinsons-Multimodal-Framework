@@ -1,0 +1,66 @@
+## Dataset Description
+This dataset is part of a longitudinal study investigating **Parkinson's Disease (PD)** and its associated cognitive impairments. Resting-state fMRI data were collected from participants, including healthy controls (HC) and Parkinson's Disease patients with normal cognition (PD-NC) or mild cognitive impairment (PD-MCI). The dataset is organized following the **Brain Imaging Data Structure (BIDS)** specifications.
+
+### License
+This dataset is shared under the [CC0 1.0 Universal (CC0 1.0) Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/). Please acknowledge this dataset in publications by citing it appropriately.
+
+---
+
+## Study Information
+- **Title**: Resting State MRI data from healthy control (HC), Parkinson's disease with normal cognition (PD-NC), and Parkinson's disease with mild cognitive impairment (PD-MCI) cohorts
+- **Principal Investigator**: James E. Galvin
+- **Ethics Approval**: This study was approved by the Institutional Review Board (IRB) at New York University (NYU). All participants provided informed consent.
+
+---
+
+## Data Acquisition
+### MRI Details
+- **Scanner Manufacturer**: Siemens
+- **Model**: TrioTim
+- **Magnetic Field Strength**: 3 Tesla
+- **Sequence**: Echo Planar Imaging (EPI)
+- **Repetition Time (TR)**: 2000 ms
+- **Echo Time (TE)**: 29 ms
+- **Flip Angle**: 90°
+- **Slice Thickness**: 3.5 mm
+- **Spacing Between Slices**: 3.5 mm
+
+---
+
+## Dataset Structure
+The dataset contains the following main directories and files:
+
+- **`/participants.json`**: Contains metadata describing participant demographics and group information.
+- **`/sub-<label>/`**: Subdirectories for each participant containing:
+  - `anat/`: Anatomical MRI data (T1-weighted images).
+  - `func/`: Functional MRI data (resting-state).
+  
+---
+
+## Key Files
+### `participants.tsv`
+A tab-separated file containing participant demographics, group, and other relevant information.
+
+| participant_id | group   | age | sex  |
+|----------------|---------|-----|------|
+| sub-MJF001     | PD-MCI  | 68  | M    |
+| sub-MJF008     | HC      | 61  | F    |
+
+### `task-rest_bold.json`
+Metadata file describing the resting-state functional MRI task. Key fields include:
+- **TaskName**: "rest"
+- **Modality**: "MR"
+- **TR**: 2000 ms
+- **EchoTime**: 29 ms
+
+---
+
+## Usage Notes
+- Please refer to the associated publication for detailed study design and analysis pipelines.
+
+---
+
+## Acknowledgments
+We acknowledge the contributions of all study participants and research team members. Special thanks to the Micheal J. Fox Foundation for supporting this research.
+
+---
