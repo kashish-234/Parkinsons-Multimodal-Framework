@@ -27,7 +27,7 @@ class REMTrainingPipeline:
     Handles: data loading → feature selection → model training → fusion → results
     """
     
-    def __init__(self, data_dir: str = '.', output_dir: str = './results'):
+    def __init__(self, data_dir: str = '.', output_dir: str = './output'):
         """
         Initialize training pipeline
         
@@ -39,6 +39,8 @@ class REMTrainingPipeline:
         self.output_dir = output_dir
         self.features = None
         self.labels = None
+        self.test_features = None  # Hold-out test set
+        self.test_labels = None    # Hold-out test labels
         self.models = {}
         self.modality_result: Optional[ModalityResult] = None
         
@@ -70,14 +72,23 @@ class REMTrainingPipeline:
     
     def select_rem_features(self) -> pd.DataFrame:
         """
-        Select REM-specific features for model training
+        Select REM-specific features for model training and create test split
         
         Returns:
-            Selected features dataframe
+            Selected training features dataframe
         """
         print("\n" + "="*60)
-        print("STEP 2: REM FEATURE SELECTION")
+        print("STEP 2: REM FEATURE SELECTION & TEST SPLIT")
         print("="*60)
+        
+        from sklearn.model_selection import train_test_split
+        
+        # Create hold-out test set (20% of data)
+        self.features, self.test_features, self.labels, self.test_labels = train_test_split(
+            self.features, self.labels, test_size=0.2, random_state=42, stratify=self.labels
+        )
+        
+        print(f"Created test split: Train {self.features.shape[0]}, Test {self.test_features.shape[0]}")
         
         # REM symptom features
         rem_symptoms = [col for col in self.features.columns 
@@ -102,17 +113,19 @@ class REMTrainingPipeline:
                                if self.features[col].std() > 0]
         
         selected_data = self.features[selected_features].copy()
+        selected_test_data = self.test_features[selected_features].copy()
         
         print(f"\n✓ Selected {len(selected_features)} REM features:")
         for i, feat in enumerate(selected_features, 1):
             print(f"  {i}. {feat}")
         
         self.features = selected_data
+        self.test_features = selected_test_data
         return selected_data
     
     def train_xgb_model(self) -> ModelOutput:
         """
-        Train XGBoost model
+        Train XGBoost model with proper train/val/test split
         
         Returns:
             ModelOutput object
@@ -120,6 +133,15 @@ class REMTrainingPipeline:
         print("\n" + "="*60)
         print("STEP 3A: TRAINING XGBoost MODEL")
         print("="*60)
+        
+        from sklearn.model_selection import train_test_split
+        
+        # Split training data further: 75% train, 25% validation (from the 80% training data)
+        X_train, X_val, y_train, y_val = train_test_split(
+            self.features, self.labels, test_size=0.25, random_state=42, stratify=self.labels
+        )
+        
+        print(f"Training splits: Train {X_train.shape[0]}, Val {X_val.shape[0]}, Test {self.test_features.shape[0]}")
         
         xgb_params = {
             'n_estimators': 150,
@@ -132,16 +154,34 @@ class REMTrainingPipeline:
         }
         
         xgb_model = XGBModel(model_name="XGBoost", **xgb_params)
-        xgb_model.train(self.features, self.labels, validation_split=0.2)
         
-        # Get model output
-        model_output = xgb_model.get_model_output(self.features, self.labels)
+        # Train with validation monitoring
+        train_result = xgb_model.train(X_train, y_train, validation_split=0.2)
+        
+        # Evaluate on different sets
+        train_metrics = xgb_model.evaluate(X_train, y_train)
+        val_metrics = xgb_model.evaluate(X_val, y_val)
+        test_metrics = xgb_model.evaluate(self.test_features, self.test_labels)
         
         print(f"\nXGBoost Performance:")
-        print(f"  Accuracy:  {model_output.accuracy:.4f}")
-        print(f"  Precision: {model_output.precision:.4f}")
-        print(f"  Recall:    {model_output.recall:.4f}")
-        print(f"  F1-Score:  {model_output.f1_score:.4f}")
+        print(f"  Train - Accuracy: {train_metrics['accuracy']:.4f}, F1: {train_metrics['f1_score']:.4f}")
+        print(f"  Val   - Accuracy: {val_metrics['accuracy']:.4f}, F1: {val_metrics['f1_score']:.4f}")
+        print(f"  Test  - Accuracy: {test_metrics['accuracy']:.4f}, F1: {test_metrics['f1_score']:.4f}")
+        
+        # Check for overfitting
+        train_acc = train_metrics['accuracy']
+        val_acc = val_metrics['accuracy']
+        test_acc = test_metrics['accuracy']
+        
+        if train_acc > val_acc + 0.05 or train_acc > test_acc + 0.05:
+            print("  ⚠️  WARNING: Possible overfitting detected!")
+            print(".4f")
+        else:
+            print("  ✓ No significant overfitting detected")
+        
+        # Get model output on test set for consistency
+        model_output = xgb_model.get_model_output(self.test_features, self.test_labels)
+        model_output.model_name = "XGBoost"  # Ensure correct name
         
         # Save model
         xgb_model.save(os.path.join(self.output_dir, 'xgb_model.pkl'))
@@ -151,7 +191,7 @@ class REMTrainingPipeline:
     
     def train_rf_model(self) -> ModelOutput:
         """
-        Train Random Forest model
+        Train Random Forest model with proper train/val/test split
         
         Returns:
             ModelOutput object
@@ -159,6 +199,15 @@ class REMTrainingPipeline:
         print("\n" + "="*60)
         print("STEP 3B: TRAINING RANDOM FOREST MODEL")
         print("="*60)
+        
+        from sklearn.model_selection import train_test_split
+        
+        # Split training data further: 75% train, 25% validation (from the 80% training data)
+        X_train, X_val, y_train, y_val = train_test_split(
+            self.features, self.labels, test_size=0.25, random_state=42, stratify=self.labels
+        )
+        
+        print(f"Training splits: Train {X_train.shape[0]}, Val {X_val.shape[0]}, Test {self.test_features.shape[0]}")
         
         rf_params = {
             'n_estimators': 150,
@@ -169,16 +218,34 @@ class REMTrainingPipeline:
         }
         
         rf_model = RFModel(model_name="RandomForest", **rf_params)
-        rf_model.train(self.features, self.labels, validation_split=0.2)
         
-        # Get model output
-        model_output = rf_model.get_model_output(self.features, self.labels)
+        # Train model
+        train_result = rf_model.train(X_train, y_train, validation_split=0.2)
+        
+        # Evaluate on different sets
+        train_metrics = rf_model.evaluate(X_train, y_train)
+        val_metrics = rf_model.evaluate(X_val, y_val)
+        test_metrics = rf_model.evaluate(self.test_features, self.test_labels)
         
         print(f"\nRandom Forest Performance:")
-        print(f"  Accuracy:  {model_output.accuracy:.4f}")
-        print(f"  Precision: {model_output.precision:.4f}")
-        print(f"  Recall:    {model_output.recall:.4f}")
-        print(f"  F1-Score:  {model_output.f1_score:.4f}")
+        print(f"  Train - Accuracy: {train_metrics['accuracy']:.4f}, F1: {train_metrics['f1_score']:.4f}")
+        print(f"  Val   - Accuracy: {val_metrics['accuracy']:.4f}, F1: {val_metrics['f1_score']:.4f}")
+        print(f"  Test  - Accuracy: {test_metrics['accuracy']:.4f}, F1: {test_metrics['f1_score']:.4f}")
+        
+        # Check for overfitting
+        train_acc = train_metrics['accuracy']
+        val_acc = val_metrics['accuracy']
+        test_acc = test_metrics['accuracy']
+        
+        if train_acc > val_acc + 0.05 or train_acc > test_acc + 0.05:
+            print("  ⚠️  WARNING: Possible overfitting detected!")
+            print(".4f")
+        else:
+            print("  ✓ No significant overfitting detected")
+        
+        # Get model output on test set for consistency
+        model_output = rf_model.get_model_output(self.test_features, self.test_labels)
+        model_output.model_name = "RandomForest"  # Ensure correct name
         
         # Save model
         rf_model.save(os.path.join(self.output_dir, 'rf_model.pkl'))
@@ -208,9 +275,9 @@ class REMTrainingPipeline:
         for model_output in model_outputs:
             ensemble.add_model_output(model_output)
         
-        # Create modality result
+        # Create modality result using test labels
         self.modality_result = ensemble.create_modality_result(
-            y_true=self.labels,
+            y_true=self.test_labels,  # Use test labels instead of full dataset
             fusion_weights=fusion_weights
         )
         
@@ -300,7 +367,7 @@ class REMTrainingPipeline:
     def run_complete_pipeline(self, fusion_method: str = "voting",
                              fusion_weights: Optional[Dict[str, float]] = None) -> ModalityResult:
         """
-        Execute complete training pipeline
+        Execute complete training pipeline with proper overfitting checks
         
         Args:
             fusion_method: Method for fusing models
@@ -320,13 +387,13 @@ class REMTrainingPipeline:
             # Step 2: Select features
             self.select_rem_features()
             
-            # Step 3: Train models
+            # Step 3: Train models (they now handle their own train/val/test splits internally)
             xgb_output = self.train_xgb_model()
             rf_output = self.train_rf_model()
             
             model_outputs = [xgb_output, rf_output]
             
-            # Step 4: Fuse models
+            # Step 4: Fuse models - Note: fusion now uses test set performance
             self.modality_result = self.fuse_models(
                 model_outputs,
                 fusion_method=fusion_method,
@@ -344,6 +411,8 @@ class REMTrainingPipeline:
         
         except Exception as e:
             print(f"\n✗ Pipeline failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
             raise
 
 
@@ -352,7 +421,7 @@ if __name__ == "__main__":
     # Initialize pipeline
     pipeline = REMTrainingPipeline(
         data_dir='../dataset',
-        output_dir='./results'
+        output_dir='./output'
     )
     
     # Run complete pipeline

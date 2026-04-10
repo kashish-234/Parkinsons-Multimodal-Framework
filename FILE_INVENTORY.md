@@ -6,7 +6,7 @@
 REmm/
 ├── dataset/                    # Data preprocessing module and raw CSV sources
 ├── models/                     # Model training & fusion module
-│   └── results/                # Output directory (created after running)
+│   └── output/                 # Output directory (created dynamically, can be deleted)
 ├── README.md                   # Main project documentation
 ├── REM_Architecture.drawio     # Visual architecture diagram
 ├── requirements.txt            # Python dependencies
@@ -54,7 +54,7 @@ REmm/
 | **README.md**       | (documentation)       | Provides module-specific documentation and usage instructions                                                                                                                            |
 | ****init**.py**     | (empty)               | Marks the directory as a Python package                                                                                                                                                  |
 
-### Output Directory (`models/results/` - created after execution)
+### Output Directory (`models/output/` - created dynamically)
 
 | **File Name**                          | **Description**                            | **Key Contents**                                                                         | **Purpose / Usage**                                           |
 | -------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -63,7 +63,7 @@ REmm/
 | **xgb_model.pkl**                      | Serialized XGBoost model                   | Trained model weights and structure                                                      | Used for direct prediction without retraining                 |
 | **rf_model.pkl**                       | Serialized Random Forest model             | Trained model data                                                                       | Used for inference and predictions                            |
 | **processed_data/features.csv**        | Preprocessed feature dataset               | Cleaned REM sleep features                                                               | Input data for training models                                |
-| **processed_data/labels.csv**          | Output labels dataset                      | Patient diagnosis (target variable)                                                      | Used to train and evaluate models                             |
+| **processed_data/labels.csv**           | Output labels dataset                      | Patient diagnosis (target variable)                                                      | Used to train and evaluate models                             |
 | **processed_data/merged_raw_data.csv** | Combined raw dataset                       | Merged data from all sources before preprocessing                                        | Used for data preparation and feature engineering             |
 
 ## Quick Reference: Class Methods

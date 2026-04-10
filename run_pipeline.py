@@ -22,7 +22,7 @@ def main():
     # Configuration
     config = {
         'data_dir': './dataset',
-        'output_dir': './models/results',
+        'output_dir': './models/output',
         'fusion_method': 'voting',  # or 'averaging'
         'fusion_weights': None,      # or {'XGBoost': 0.6, 'RandomForest': 0.4}
     }

@@ -122,9 +122,9 @@ class REMDataProcessor:
         
         df = self.merged_data.copy()
         
-        # REM symptom features
+        # REM symptom features (excluding the target variable ptcgboth)
         rem_symptom_cols = [
-            'ptcgboth', 'drmvivid', 'drmagrac', 'drmnoctb', 'slplmbmv',
+            'drmvivid', 'drmagrac', 'drmnoctb', 'slplmbmv',
             'slpinjur', 'drmverbl', 'drmfight', 'drmumv', 'drmobjfl',
             'mvawaken', 'drmremem', 'slpdstrb'
         ]

@@ -9,32 +9,43 @@ REmm/
 ├── dataset/
 │   ├── __init__.py
 │   ├── preprocess.py           # Data loading, cleaning, feature extraction
-│   ├── features.csv            # Processed features (output)
-│   ├── labels.csv              # Labels data (output)
-│   └── merged_raw_data.csv     # Merged raw data (output)
+│   └── [processed data]        # Created dynamically during training
 │
 ├── models/
 │   ├── __init__.py
-│   ├── train.py                # Main orchestrator
+│   ├── train.py                # Main training orchestrator
 │   ├── model_output.py         # ModelOutput & ModalityResult classes
-│   ├── xgb_model.py            # XGBoost model
-│   ├── rf_model.py             # Random Forest model
-│   ├── fusion.py               # Intra-modal fusion
-│   ├── README.md
-│   ├── xgb_model.pkl           # Trained XGBoost (output)
-│   ├── rf_model.pkl            # Trained RF (output)
-│   └── results/
-│       ├── modality_result.json # Final fused results
-│       ├── training_report.txt  # Detailed metrics
-│       └── processed_data/      # Processed features
+│   ├── xgb_model.py            # XGBoost model implementation
+│   ├── rf_model.py             # Random Forest model implementation
+│   ├── fusion.py               # Intra-modal fusion logic
+│   └── README.md               # Model-specific documentation
 │
 ├── dataset.csv
 ├── dataset.xls
 ├── Features_of_REM_Behavior_Disorder-Archived_09Apr2026.csv
 ├── REM_Sleep_Behavior_Disorder_Screening_Questionnaire_09Apr2026.csv
 ├── REM_Sleep_Disorder_Questionnaire-Archived_09Apr2026.csv
-└── Parkinson_guidelines.docx
+├── Parkinson_guidelines.docx
+├── FILE_INVENTORY.md
+├── REM_Architecture.drawio
+├── requirements.txt
+└── run_pipeline.py             # Main execution script
+```
 
+## Dynamic Output Files
+
+During training, the following files are created in `models/output/` (can be deleted after use):
+
+```
+models/output/
+├── modality_result.json     # Final fused model results & metrics
+├── training_report.txt      # Detailed training report
+├── xgb_model.pkl           # Trained XGBoost model
+├── rf_model.pkl            # Trained Random Forest model
+└── processed_data/
+    ├── features.csv        # Preprocessed features
+    ├── labels.csv          # Target labels
+    └── merged_raw_data.csv # Combined raw dataset
 ```
 
 ## Pipeline Overview
@@ -42,27 +53,50 @@ REmm/
 ### Architecture Flow
 
 ```
-Data Loading
+Data Loading → Preprocessing → Feature Selection → Train/Val/Test Split
     ↓
-Dataset → Features
+├──→ Train XGBoost Model (with validation) → Evaluate on Test Set
+└──→ Train Random Forest (with validation) → Evaluate on Test Set
     ↓
-Preprocess (Clean, Handle Missing, Feature Selection)
+Check for Overfitting (Train vs Val vs Test performance)
     ↓
-Select REM Features
+Intra-Modal Fusion (Voting/Averaging)
     ↓
-Split into Training/Validation
+Generate Final ModalityResult
     ↓
-├──→ Train XGBoost Model → ModelOutput (XGB)
-└──→ Train Random Forest → ModelOutput (RF)
-    ↓
-Combine Predictions (Intra-Modal Fusion)
-    ├→ Voting
-    └→ Averaging
-    ↓
-Generate ModalityResult (Fused Predictions)
-    ↓
-Evaluate & Store Results
+Save Results & Clean Up (optional)
 ```
+
+### Key Features
+
+- **Overfitting Detection**: Automatic checks comparing train/validation/test performance
+- **Proper Evaluation**: Models evaluated on held-out test sets, not training data
+- **Data Leakage Prevention**: Target variable removed from features
+- **Flexible Output**: Output files created dynamically and can be deleted
+- **Modular Design**: Separate components for easy modification and testing
+
+## Quick Start
+
+### Prerequisites
+```bash
+pip install -r requirements.txt
+```
+
+### Run Complete Pipeline
+```bash
+# From project root
+python run_pipeline.py
+
+# Or run training directly
+cd models
+python train.py
+```
+
+### Expected Output
+- Training progress with overfitting checks
+- Model performance metrics (accuracy, F1-score, etc.)
+- Feature importance rankings
+- Files saved to `models/output/` (can be deleted after use)
 
 ## Component Details
 
@@ -74,14 +108,30 @@ Evaluate & Store Results
 - `handle_missing_values()` - Imputation strategies
 - `remove_duplicates()` - Data deduplication
 - `merge_datasets()` - Combine sources
-- `extract_rem_features()` - Select REM-specific features
+- `extract_rem_features()` - Select REM-specific features (excludes target variable)
 - `save_processed_data()` - Export processed data
 
 **Output:** Processed features DataFrame and labels Series
 
-### 2. Model Components (`models/`)
+### 2. Training Pipeline (`models/train.py`)
 
-#### 2a. ModelOutput (`model_output.py`)
+**REMTrainingPipeline Class:**
+- `load_and_prepare_data()` - Load and preprocess data
+- `select_rem_features()` - Feature selection and test split creation
+- `train_xgb_model()` - Train XGBoost with overfitting detection
+- `train_rf_model()` - Train Random Forest with overfitting detection
+- `fuse_models()` - Ensemble fusion using test set performance
+- `save_results()` - Save results and generate reports
+
+**Key Improvements:**
+- Proper train/validation/test splits (60%/20%/20%)
+- Overfitting detection comparing train vs validation vs test performance
+- Data leakage prevention (target variable excluded from features)
+- Automatic output directory creation
+
+### 3. Model Components (`models/`)
+
+#### 3a. ModelOutput (`model_output.py`)
 ```python
 @dataclass
 class ModelOutput:
@@ -93,16 +143,16 @@ class ModelOutput:
     config: Dict[str, Any]
 ```
 
-#### 2b. ModalityResult (`model_output.py`)
+#### 3b. ModalityResult (`model_output.py`)
 ```python
 @dataclass
 class ModalityResult:
     modality_name: str = "REM"
-    model_outputs: List[ModelOutput]
-    fused_predictions: np.ndarray
-    fused_probabilities: np.ndarray
-    ensemble_accuracy, precision, recall, f1: float
+    fusion_method: str
+    num_models: int
+    ensemble_accuracy, precision, recall, f1_score: float
     aggregated_feature_importance: Dict[str, float]
+```
     fusion_method: str  # "voting" or "averaging"
 ```
 
