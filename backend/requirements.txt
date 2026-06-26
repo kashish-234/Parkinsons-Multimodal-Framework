@@ -1,6 +1,0 @@
-FastAPI
-uvicorn
-firebase-admin
-python-dotenv
-pydantic
-fastapi-cors
